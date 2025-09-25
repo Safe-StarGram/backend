@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -102,6 +103,15 @@ public class AreaJdbcRepository {
                         .updatedAt(rs.getTimestamp("updated_at").toLocalDateTime())
                         .build()
         );
+    }
+
+    public void deleteSubAreasByIds(List<Long> subAreaIds) {
+        if (subAreaIds == null || subAreaIds.isEmpty()) {
+            return;
+        }
+        String inSql = String.join(",", Collections.nCopies(subAreaIds.size(), "?"));
+        String sql = String.format("DELETE FROM sub_area WHERE sub_area_id IN (%s)", inSql);
+        jdbc.update(sql, subAreaIds.toArray());
     }
 }
 

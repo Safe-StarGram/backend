@@ -4,21 +4,27 @@ import com.github.dto.AreaResponse;
 import com.github.dto.AreaUpdateRequest;
 import com.github.dto.SubAreaDto;
 import com.github.entity.AreaEntity;
+import com.github.entity.SubAreaEntity;
 import com.github.repository.AreaJdbcRepository;
 import com.github.repository.PostJdbcRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +35,9 @@ public class AreaService {
 
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
+
+    @Value("${api.base-url}")
+    private String baseUrl;
 
 
     //소구역 포함 저장
@@ -52,13 +61,6 @@ public class AreaService {
         return areaId;
     }
 
-
-    @Transactional
-    public void updateAreaImage(Long areaId, MultipartFile image) {
-        if (image == null || image.isEmpty()) return;
-        String url = saveAndMakeUrl(image);
-        repo.updateImageUrl(areaId, url);
-    }
 
     private String saveAndMakeUrl(MultipartFile file) {
         try {
@@ -138,11 +140,11 @@ public class AreaService {
         
         // 상대 경로인 경우 완전한 URL로 변환
         if (imageUrl.startsWith("/uploads/")) {
-            return "https://chan23.duckdns.org/safe_api" + imageUrl;
+            return baseUrl + imageUrl;
         }
         
         // 다른 형태의 경로인 경우 기본 도메인 추가
-        return "https://chan23.duckdns.org/safe_api/uploads/" + imageUrl;
+        return baseUrl + "/uploads/" + imageUrl;
     }
 
     @Transactional
@@ -152,22 +154,55 @@ public class AreaService {
             repo.updateAreaName(areaId, req.getAreaName().trim());
         }
 
-        // 2. 이미지가 있으면 새로 저장 (기존 이미지 교체)
+        // 2. 이미지 변경
         if (image != null && !image.isEmpty()) {
             String imageUrl = saveAndMakeUrl(image);
             repo.updateAreaImage(areaId, imageUrl);
         }
 
-        // 3. 소구역 통째로 교체
-        repo.deleteSubAreas(areaId);
-
-        if (req.getSubAreaNames() != null && !req.getSubAreaNames().isEmpty()) {
-            List<String> names = req.getSubAreaNames().stream()
+        // 3. 소구역 갱신 로직
+        if (req.getSubAreaNames() != null) {
+            // 3-1. 기존 소구역과 새로운 소구역 목록 준비
+            List<SubAreaEntity> existingSubAreas = repo.findSubArea(areaId);
+            List<String> newSubAreaNames = req.getSubAreaNames().stream()
                     .filter(n -> n != null && !n.trim().isEmpty())
+                    .distinct()
+                    .toList();
+            
+            Map<String, SubAreaEntity> existingNameMap = existingSubAreas.stream()
+                    .collect(Collectors.toMap(SubAreaEntity::getName, Function.identity()));
+
+            // 3-2. 삭제할 소구역 찾기 및 검증
+            List<SubAreaEntity> toDelete = existingSubAreas.stream()
+                    .filter(sub -> !newSubAreaNames.contains(sub.getName()))
                     .toList();
 
-            if (!names.isEmpty()) {
-                repo.insertSubAreas(areaId, names);
+            if (!toDelete.isEmpty()) {
+                List<String> undeletable = new ArrayList<>();
+                for (SubAreaEntity sub : toDelete) {
+                    if (postJdbcRepository.countBySubArea(sub.getSubAreaId()) > 0) {
+                        undeletable.add(sub.getName());
+                    }
+                }
+
+                if (!undeletable.isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, 
+                        "다음 소구역은 게시물이 존재하여 삭제할 수 없습니다: " + String.join(", ", undeletable));
+                }
+
+                List<Long> toDeleteIds = toDelete.stream().map(SubAreaEntity::getSubAreaId).toList();
+                if (!toDeleteIds.isEmpty()) {
+                    repo.deleteSubAreasByIds(toDeleteIds);
+                }
+            }
+
+            // 3-3. 추가할 소구역 찾기
+            List<String> toAdd = newSubAreaNames.stream()
+                    .filter(name -> !existingNameMap.containsKey(name))
+                    .toList();
+
+            if (!toAdd.isEmpty()) {
+                repo.insertSubAreas(areaId, toAdd);
             }
         }
     }

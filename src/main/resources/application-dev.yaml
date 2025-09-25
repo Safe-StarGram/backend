@@ -33,3 +33,5 @@ spring:
 #spring:
 #  profiles:
 #    active: dev
+api:
+  base-url: http://localhost:8080

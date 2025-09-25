@@ -27,6 +27,9 @@ public class ProfileService {
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
 
+    @Value("${api.base-url}")
+    private String baseUrl;
+
     public ProfileResponse getMyProfile(int userId) {
 
         UserEntity u = userJdbcRepository.findById(userId); //userId로 엔티티 조회
@@ -131,7 +134,7 @@ public class ProfileService {
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
         // 완전한 URL로 반환 (도메인 + 경로)
-        return "https://chan23.duckdns.org/safe_api/uploads/" + storedName;
+        return baseUrl + "/uploads/" + storedName;
     }
 
     /** 상대 경로를 완전한 URL로 변환 */
@@ -147,11 +150,11 @@ public class ProfileService {
         
         // 상대 경로인 경우 완전한 URL로 변환
         if (photoUrl.startsWith("/uploads/")) {
-            return "https://chan23.duckdns.org/safe_api" + photoUrl;
+            return baseUrl + photoUrl;
         }
         
         // 다른 형태의 경로인 경우 기본 도메인 추가
-        return "https://chan23.duckdns.org/safe_api/uploads/" + photoUrl;
+        return baseUrl + "/uploads/" + photoUrl;
     }
 
     /** 권한 확인: 사용자가 자신의 프로필만 수정할 수 있도록 보장 */

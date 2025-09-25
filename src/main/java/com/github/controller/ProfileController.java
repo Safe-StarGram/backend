@@ -13,9 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
-@RequestMapping("/selfs")
+@RequestMapping("/auth/profile")
 @RequiredArgsConstructor
-public class SelfController {
+public class ProfileController {
 
     private final ProfileService profileService;
     private final JwtTokenProvider jwtTokenProvider;

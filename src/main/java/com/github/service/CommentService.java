@@ -9,6 +9,7 @@ import com.github.repository.UserJdbcRepository;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,9 @@ public class CommentService {
 
     private final CommentJdbcRepository commentRepository;
     private final UserJdbcRepository userRepository;
+
+    @Value("${api.base-url}")
+    private String baseUrl;
 
     @Transactional
     public CommentEntity createComment(CommentCreateRequest request) {
@@ -153,11 +157,11 @@ public class CommentService {
         
         // 상대 경로인 경우 완전한 URL로 변환
         if (photoUrl.startsWith("/uploads/")) {
-            return "https://chan23.duckdns.org/safe_api" + photoUrl;
+            return baseUrl + photoUrl;
         }
         
         // 다른 형태의 경로인 경우 기본 도메인 추가
-        return "https://chan23.duckdns.org/safe_api/uploads/" + photoUrl;
+        return baseUrl + "/uploads/" + photoUrl;
     }
 }
 

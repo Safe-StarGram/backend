@@ -30,6 +30,9 @@ public class PostService {
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
 
+    @Value("${api.base-url}")
+    private String baseUrl;
+
 
         @Transactional
         public PostEntity create(PostCreateRequest req, MultipartFile image) {
@@ -313,11 +316,11 @@ public class PostService {
         
         // 상대 경로인 경우 완전한 URL로 변환
         if (photoUrl.startsWith("/uploads/")) {
-            return "https://chan23.duckdns.org/safe_api" + photoUrl;
+            return baseUrl + photoUrl;
         }
         
         // 다른 형태의 경로인 경우 기본 도메인 추가
-        return "https://chan23.duckdns.org/safe_api/uploads/" + photoUrl;
+        return baseUrl + "/uploads/" + photoUrl;
     }
 
     /**
