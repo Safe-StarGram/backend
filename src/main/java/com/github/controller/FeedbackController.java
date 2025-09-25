@@ -16,14 +16,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/feedbacks")
 @RequiredArgsConstructor
-public class CommentController {
+public class FeedbackController {
 
     private final CommentService commentService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    @GetMapping("/comment/{postId}")
+    @GetMapping("/{postId}")
     public ResponseEntity<List<CommentEntity>> getCommentsByPostId(@PathVariable Long postId) {
         System.out.println("=== 게시글별 댓글 조회 진행 ===");
         System.out.println("PostId: " + postId);
@@ -36,7 +36,7 @@ public class CommentController {
         return ResponseEntity.ok(comments);
     }
 
-    @PostMapping("/comment")
+    @PostMapping
     public ResponseEntity<CommentEntity> createComment(
             @Valid @RequestBody CommentCreateRequest request,
             HttpServletRequest httpRequest
@@ -59,7 +59,7 @@ public class CommentController {
         return ResponseEntity.ok(comment);
     }
 
-    @PatchMapping("/comment/modify/{commentId}")
+    @PatchMapping("/{commentId}")
     public ResponseEntity<CommentEntity> updateComment(
             @PathVariable Long commentId,
             @RequestBody Map<String, String> request,
@@ -81,7 +81,7 @@ public class CommentController {
         return ResponseEntity.ok(comment);
     }
 
-    @DeleteMapping("/comment/delete/{commentId}")
+    @DeleteMapping("/{commentId}")
     public ResponseEntity<Map<String, String>> deleteComment(
             @PathVariable Long commentId,
             HttpServletRequest httpRequest

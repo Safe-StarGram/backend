@@ -17,9 +17,9 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/backoffic")
 @RequiredArgsConstructor
-public class AdminController {
+public class BackofficeController {
 
     private final AdminService adminService;
     private final JwtTokenProvider jwtTokenProvider;
@@ -61,7 +61,7 @@ public class AdminController {
      * 사용자 권한 관리 - 권한 부여/제거
      * PUT /api/admin/users/{userId}/permission
      */
-    @PutMapping("/users/{userId}/permission")
+    @PutMapping("/permission/{userId}")
     public ResponseEntity<Map<String, Object>> updateUserPermission(
             @PathVariable int userId,
             @Valid @RequestBody AdminPermissionRequest request,

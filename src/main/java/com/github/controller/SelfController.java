@@ -13,15 +13,15 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
-@RequestMapping("/profile")
+@RequestMapping("/selfs")
 @RequiredArgsConstructor
-public class ProfileController {
+public class SelfController {
 
     private final ProfileService profileService;
     private final JwtTokenProvider jwtTokenProvider;
 
     // 내 프로필 조회
-    @GetMapping("/me")
+    @GetMapping
     public ResponseEntity<ProfileResponse> getMyProfile(HttpServletRequest request) {
         String token = extractTokenFromRequest(request);
         Long userId = jwtTokenProvider.getUserId(token);
@@ -42,7 +42,7 @@ public class ProfileController {
     }
 
     // 내 프로필 수정
-    @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PatchMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProfileResponse> updateMyProfile(
             HttpServletRequest request,
             @RequestParam(value = "name", required = false) String name,

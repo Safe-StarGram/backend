@@ -11,17 +11,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/stats")
+@RequestMapping("/graphs")
 @RequiredArgsConstructor
-public class StatisticsController {
+public class GraphController {
 
     private final StatisticsService statisticsService;
 
     /**
      * 블록별 보고건수
-     * GET /stats/hazards?from=2025-01-01&to=2025-12-31
+     * GET /graphs/hazards?from=2025-01-01&to=2025-12-31
      */
-    @GetMapping("/hazards")
+    @GetMapping
     public ResponseEntity<Map<String, Object>> hazards(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -51,7 +51,7 @@ public class StatisticsController {
      * 월별 신고 건수 추이 (블록별)
      * GET /stats/monthly-reports?from=2025-01-01&to=2025-12-31
      */
-    @GetMapping("/monthly-reports")
+    @GetMapping("/monthly/reports")
     public ResponseEntity<Map<String, Object>> monthlyReports(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
@@ -66,7 +66,7 @@ public class StatisticsController {
      * 블록별 고위험성(3점 이상) 조치건수
      * GET /stats/high-risk-actions?from=2025-01-01&to=2025-12-31
      */
-    @GetMapping("/high-risk-actions")
+    @GetMapping("/high/risks")
     public ResponseEntity<Map<String, Object>> highRiskActions(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to

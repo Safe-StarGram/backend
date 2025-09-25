@@ -14,13 +14,13 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/areas")
-public class AreaController {
+@RequestMapping("/sites")
+public class SiteController {
 
     private final AreaService service;
 
     // 관리구역 일람 - 모든 관리구역 목록 조회
-    @GetMapping("/read")
+    @GetMapping("/list")
     public ResponseEntity<List<AreaResponse>> getAllArea() {
         List<AreaResponse> areas = service.getAllArea();
         return ResponseEntity.ok(areas);
@@ -46,7 +46,7 @@ public class AreaController {
         return ResponseEntity.ok().build();
     }
     //조회
-    @GetMapping("/{areaId}")
+    @GetMapping("/list/{areaId}")
     public ResponseEntity<AreaResponse> getDetail(@PathVariable Long areaId) {
         AreaResponse body = service.getAreaDetail(areaId);
         return ResponseEntity.ok(body);
@@ -54,7 +54,7 @@ public class AreaController {
     }
 
     // 관리구역 전체 수정 (이름 + 이미지)
-    @PutMapping(path = "/{areaId}", consumes = {"multipart/form-data"})
+    @PutMapping(path = "/list/{areaId}", consumes = {"multipart/form-data"})
     public ResponseEntity<String> updateArea(
             @PathVariable Long areaId,
             @ModelAttribute AreaUpdateRequest req,

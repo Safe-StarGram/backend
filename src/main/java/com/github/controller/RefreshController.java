@@ -20,14 +20,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/refresh")
 @RequiredArgsConstructor
-public class AutoRefreshController {
+public class RefreshController {
 
     private final JwtTokenProvider jwtProvider;
     private final RefreshTokenStore tokenStore;
 
-    @PostMapping("/auto-refresh")
+    @PostMapping
     public ResponseEntity<TokenResponse> autoRefresh(@RequestBody(required = false) Map<String, String> requestBody, HttpServletRequest request, HttpServletResponse response) {
         try {
             System.out.println("=== 자동 토큰 갱신 시작 ===");

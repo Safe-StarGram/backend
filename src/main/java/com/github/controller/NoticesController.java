@@ -19,14 +19,14 @@ import java.util.HashMap;
 
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/notices")
 @RequiredArgsConstructor
-public class PostController {
+public class NoticesController {
 
     private final PostService postService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    @PostMapping(value = "/posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostEntity> create(
             HttpServletRequest request,
             @Valid @ModelAttribute PostCreateRequest req,
@@ -65,7 +65,7 @@ public class PostController {
         throw new RuntimeException("토큰을 찾을 수 없습니다.");
     }
 
-    @GetMapping("/posts")
+    @GetMapping
     public ResponseEntity<List<PostEntity>> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -86,7 +86,7 @@ public class PostController {
         return ResponseEntity.ok(posts);
     }
 
-    @GetMapping("/posts/detail/{postId}")
+    @GetMapping("/{postId}")
     public ResponseEntity<PostEntity> getPostById(@PathVariable Long postId) {
         System.out.println("=== 게시글 상세 조회 진행 ===");
         System.out.println("PostId: " + postId);
@@ -101,7 +101,7 @@ public class PostController {
     
 
     // JSON 본문으로 게시글 수정 지원 (raw JSON)
-    @PatchMapping("/posts/{postId}")
+    @PatchMapping("/{postId}")
     public ResponseEntity<PostEntity> updatePost(
             @PathVariable Long postId,
             @RequestBody Map<String, Object> updates,
@@ -116,7 +116,7 @@ public class PostController {
     }
 
 
-    @DeleteMapping("/posts/delete/{postId}")
+    @DeleteMapping("/{postId}")
     public ResponseEntity<Map<String, String>> deletePost(
             @PathVariable Long postId,
             HttpServletRequest request
@@ -132,7 +132,7 @@ public class PostController {
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/posts/action-status/{postId}")
+    @PatchMapping("/status/{postId}")
     public ResponseEntity<PostEntity> updateActionStatus(
             @PathVariable Long postId,
             @RequestBody Map<String, Object> updates,
@@ -152,7 +152,7 @@ public class PostController {
         return ResponseEntity.ok(updatedPost);
     }
 
-    @PatchMapping("/posts/manager-risk/{postId}")
+    @PatchMapping("/risk/{postId}")
     public ResponseEntity<PostEntity> updateManagerRisk(
             @PathVariable Long postId,
             @Valid @RequestBody ManagerRiskAssessmentRequest assessment,

@@ -15,14 +15,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/accounts")
 @RequiredArgsConstructor
 @Tag(name = "인증", description = "사용자 인증 관련 API")
-public class AuthController {
+public class AccountsController {
 
     private final AuthService authService;
 
-    @PostMapping("/join")
+    @PostMapping("/register")
     @Operation(summary = "회원가입", description = "새로운 사용자를 등록합니다.")
     public ResponseEntity<String> join(@Valid @RequestBody SignUpDto signUpDto) {
         authService.join(signUpDto);
