@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -295,5 +296,38 @@ public class AreaService {
         return monthlyHighRiskActions.stream()
                 .filter(stat -> areaId.equals(stat.get("blockId")))
                 .toList();
+    }
+
+    /**
+     * Area 삭제 (관리자 권한 필요)
+     * 참조 데이터도 함께 삭제됩니다.
+     */
+    @Transactional
+    public void deleteArea(Long areaId) {
+        // Area 존재 여부 확인
+        Optional<AreaEntity> area = repo.findArea(areaId);
+        if (area.isEmpty()) {
+            throw new RuntimeException("Area를 찾을 수 없습니다: " + areaId);
+        }
+
+        // 참조 데이터 확인
+        AreaJdbcRepository.AreaReferenceInfo refInfo = repo.getReferenceInfo(areaId);
+        if (refInfo.hasReferences()) {
+            System.out.println("Area " + areaId + " 삭제 시 함께 삭제될 데이터:");
+            System.out.println("- Posts: " + refInfo.getPostCount() + "개");
+            System.out.println("- Sub Areas: " + refInfo.getSubAreaCount() + "개");
+        }
+
+        // 계단식 삭제 실행
+        repo.deleteArea(areaId);
+        
+        System.out.println("Area " + areaId + " 삭제 완료");
+    }
+
+    /**
+     * Area 삭제 전 참조 데이터 정보 조회
+     */
+    public AreaJdbcRepository.AreaReferenceInfo getAreaReferenceInfo(Long areaId) {
+        return repo.getReferenceInfo(areaId);
     }
 }

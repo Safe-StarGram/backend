@@ -50,6 +50,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/areas/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/areas/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/sites/**").permitAll()  // sites 조회는 허용
+                .requestMatchers(HttpMethod.POST, "/sites/**").authenticated()  // sites 생성은 인증 필요
+                .requestMatchers(HttpMethod.PUT, "/sites/**").authenticated()  // sites 수정은 인증 필요
+                .requestMatchers(HttpMethod.DELETE, "/sites/**").hasAuthority("ROLE_ADMIN")  // sites 삭제는 관리자 권한 필요
                 .requestMatchers(HttpMethod.GET, "/stats/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()  // 게시글 조회는 인증 없이 허용
                 .requestMatchers("/api/comment/**").permitAll()

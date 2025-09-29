@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -112,6 +113,82 @@ public class AreaJdbcRepository {
         String inSql = String.join(",", Collections.nCopies(subAreaIds.size(), "?"));
         String sql = String.format("DELETE FROM sub_area WHERE sub_area_id IN (%s)", inSql);
         jdbc.update(sql, subAreaIds.toArray());
+    }
+
+    /**
+     * Area 삭제 (계단식 삭제)
+     * 1. 해당 area의 모든 post 삭제
+     * 2. 해당 area의 모든 sub_area 삭제  
+     * 3. area 삭제
+     */
+    @Transactional
+    public void deleteArea(Long areaId) {
+        // 1. 해당 area를 참조하는 모든 post 삭제
+        String deletePostsSql = "DELETE FROM post WHERE area_id = ?";
+        int deletedPosts = jdbc.update(deletePostsSql, areaId);
+        System.out.println("Deleted " + deletedPosts + " posts for area " + areaId);
+        
+        // 2. 해당 area의 모든 sub_area 삭제
+        String deleteSubAreasSql = "DELETE FROM sub_area WHERE area_id = ?";
+        int deletedSubAreas = jdbc.update(deleteSubAreasSql, areaId);
+        System.out.println("Deleted " + deletedSubAreas + " sub_areas for area " + areaId);
+        
+        // 3. area 삭제
+        String deleteAreaSql = "DELETE FROM area WHERE area_id = ?";
+        int deletedArea = jdbc.update(deleteAreaSql, areaId);
+        System.out.println("Deleted " + deletedArea + " area with id " + areaId);
+        
+        if (deletedArea == 0) {
+            throw new RuntimeException("Area를 찾을 수 없습니다: " + areaId);
+        }
+    }
+
+    /**
+     * Area 삭제 전 참조 데이터 확인
+     */
+    public boolean hasReferences(Long areaId) {
+        // post 테이블에서 참조 확인
+        String checkPostsSql = "SELECT COUNT(*) FROM post WHERE area_id = ?";
+        Integer postCount = jdbc.queryForObject(checkPostsSql, Integer.class, areaId);
+        
+        // sub_area 테이블에서 참조 확인
+        String checkSubAreasSql = "SELECT COUNT(*) FROM sub_area WHERE area_id = ?";
+        Integer subAreaCount = jdbc.queryForObject(checkSubAreasSql, Integer.class, areaId);
+        
+        return (postCount != null && postCount > 0) || (subAreaCount != null && subAreaCount > 0);
+    }
+
+    /**
+     * Area 삭제 전 참조 데이터 개수 조회
+     */
+    public AreaReferenceInfo getReferenceInfo(Long areaId) {
+        String checkPostsSql = "SELECT COUNT(*) FROM post WHERE area_id = ?";
+        Integer postCount = jdbc.queryForObject(checkPostsSql, Integer.class, areaId);
+        
+        String checkSubAreasSql = "SELECT COUNT(*) FROM sub_area WHERE area_id = ?";
+        Integer subAreaCount = jdbc.queryForObject(checkSubAreasSql, Integer.class, areaId);
+        
+        return new AreaReferenceInfo(
+            postCount != null ? postCount : 0,
+            subAreaCount != null ? subAreaCount : 0
+        );
+    }
+
+    /**
+     * 참조 정보를 담는 내부 클래스
+     */
+    public static class AreaReferenceInfo {
+        private final int postCount;
+        private final int subAreaCount;
+        
+        public AreaReferenceInfo(int postCount, int subAreaCount) {
+            this.postCount = postCount;
+            this.subAreaCount = subAreaCount;
+        }
+        
+        public int getPostCount() { return postCount; }
+        public int getSubAreaCount() { return subAreaCount; }
+        public boolean hasReferences() { return postCount > 0 || subAreaCount > 0; }
     }
 }
 

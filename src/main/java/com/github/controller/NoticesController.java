@@ -123,8 +123,18 @@ public class NoticesController {
     ) {
         String token = extractTokenFromRequest(request);
         Long userId = jwtTokenProvider.getUserId(token);
+        String userRole = jwtTokenProvider.getRole(token);
         
-        postService.deletePost(postId, userId);
+        // 관리자 권한 확인
+        boolean isAdmin = "ROLE_ADMIN".equals(userRole);
+        
+        if (isAdmin) {
+            // 관리자는 모든 게시물 삭제 가능
+            postService.deletePostByAdmin(postId);
+        } else {
+            // 일반 사용자는 자신이 작성한 게시물만 삭제 가능
+            postService.deletePost(postId, userId);
+        }
         
         Map<String, String> response = new HashMap<>();
         response.put("message", "게시물이 삭제되었습니다.");

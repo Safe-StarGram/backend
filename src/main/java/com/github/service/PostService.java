@@ -266,10 +266,23 @@ public class PostService {
         }
         
         // 권한 확인 (작성자만 삭제 가능)
-        if (!existingPost.getReporterId().equals(userId)) {
+        boolean isReporter = existingPost.getReporterId().equals(userId);
+        
+        if (!isReporter) {
             throw new RuntimeException("게시물을 삭제할 권한이 없습니다.");
         }
         
+        postRepository.delete(postId);
+    }
+
+    @Transactional
+    public void deletePostByAdmin(Long postId) {
+        PostEntity existingPost = postRepository.findById(postId);
+        if (existingPost == null) {
+            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+        }
+        
+        // 관리자는 권한 확인 없이 삭제 가능
         postRepository.delete(postId);
     }
 
