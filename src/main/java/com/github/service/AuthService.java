@@ -84,12 +84,14 @@ public class AuthService {
         }
 
         long uid = user.getUserId().longValue();
-        // 테스트용: 모든 사용자에게 관리자 권한 부여
-        String role = "ROLE_ADMIN";
         
-        // 실제 운영시에는 아래 주석을 해제하고 위의 라인을 제거하세요
-        // String role = user.getEmail().contains("admin") || user.getEmail().equals("manager@company.com") ? 
-        //              "ROLE_ADMIN" : "ROLE_USER";
+        // 데이터베이스의 role 정보를 사용 (1: 관리자, 0 또는 null: 일반사용자)
+        String role;
+        if (user.getRole() != null && user.getRole() == 1) {
+            role = "ROLE_ADMIN";
+        } else {
+            role = "ROLE_USER";
+        }
 
         String access = jwt.generateAccessToken(uid, role);
         String jti = jwt.newJti();
@@ -104,6 +106,7 @@ public class AuthService {
                 .tokenType("Bearer")
                 .expiresIn(props.getAccessTtl().toSeconds())
                 .userId(user.getUserId().longValue())
+                .role(role)  // 응답에 role 정보 추가
                 .build();
     }
 

@@ -89,6 +89,7 @@ public class RefreshController {
                     .tokenType("Bearer")
                     .expiresIn(600) // 10분 (600초)
                     .userId(userId)
+                    .role(role)  // 응답에 role 정보 추가
                     .build());
 
         } catch (ResponseStatusException e) {

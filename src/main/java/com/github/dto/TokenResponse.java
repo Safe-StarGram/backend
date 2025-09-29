@@ -12,4 +12,5 @@ public class TokenResponse {
     private String tokenType;
     private long   expiresIn;
     private Long   userId;
+    private String role;  // 사용자 역할 정보 추가
 }
