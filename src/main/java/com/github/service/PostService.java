@@ -25,6 +25,9 @@ import java.util.UUID;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.sql.Timestamp;
+import com.github.constants.ErrorMessages;
+import com.github.constants.PostConstants;
+import com.github.constants.FileConstants;
 
 @Service
 @RequiredArgsConstructor
@@ -35,10 +38,10 @@ public class PostService {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Value("${file.upload-dir:./uploads}")
-    private String uploadDir;
+    private String fileUploadDirectory;
 
     @Value("${api.base-url}")
-    private String baseUrl;
+    private String apiBaseUrl;
 
 
         @Transactional
@@ -123,7 +126,7 @@ public class PostService {
     public PostEntity getPostById(Long postId) {
         PostEntity post = postRepository.findById(postId);
         if (post == null) {
-            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+            throw new PostNotFoundException(ErrorMessages.POST_NOT_FOUND);
         }
         // 이미지 URL을 완전한 URL로 변환
         if (post.getPostPhotoUrl() != null) {
@@ -151,11 +154,11 @@ public class PostService {
         return posts;
     }
 
-    public int countBySubArea(Long subAreaId) {
+    public int countPostsBySubArea(Long subAreaId) {
         return postRepository.countBySubArea(subAreaId);
     }
 
-    public int countActionTakenBySubArea(Long subAreaId) {
+    public int countActionTakenPostsBySubArea(Long subAreaId) {
         return postRepository.countActionTakenBySubArea(subAreaId);
     }
 
@@ -166,7 +169,7 @@ public class PostService {
         
         PostEntity existingPost = postRepository.findById(postId);
         if (existingPost == null) {
-            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+            throw new PostNotFoundException(ErrorMessages.POST_NOT_FOUND);
         }
         
         // 권한 확인 (작성자 또는 관리자 수정 가능)
@@ -184,7 +187,7 @@ public class PostService {
                                key.equals("is_checked_id"));
             
             if (!hasOnlyActionFields) {
-                throw new RuntimeException("게시물을 수정할 권한이 없습니다.");
+                throw new RuntimeException(ErrorMessages.INSUFFICIENT_PERMISSION);
             }
         }
         
@@ -282,14 +285,14 @@ public class PostService {
     public void deletePost(Long postId, Long userId) {
         PostEntity existingPost = postRepository.findById(postId);
         if (existingPost == null) {
-            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+            throw new PostNotFoundException(ErrorMessages.POST_NOT_FOUND);
         }
         
         // 권한 확인 (작성자만 삭제 가능)
         boolean isReporter = existingPost.getReporterId().equals(userId);
         
         if (!isReporter) {
-            throw new RuntimeException("게시물을 삭제할 권한이 없습니다.");
+            throw new RuntimeException(ErrorMessages.INSUFFICIENT_PERMISSION);
         }
         
         postRepository.delete(postId);
@@ -299,7 +302,7 @@ public class PostService {
     public void deletePostByAdmin(Long postId) {
         PostEntity existingPost = postRepository.findById(postId);
         if (existingPost == null) {
-            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+            throw new PostNotFoundException(ErrorMessages.POST_NOT_FOUND);
         }
         
         // 관리자는 권한 확인 없이 삭제 가능
@@ -309,7 +312,7 @@ public class PostService {
     private String savePostImage(Long userId, MultipartFile file) {
         try {
             // 업로드 디렉토리 생성
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = Paths.get(fileUploadDirectory);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -349,11 +352,11 @@ public class PostService {
         
         // 상대 경로인 경우 완전한 URL로 변환
         if (photoUrl.startsWith("/uploads/")) {
-            return baseUrl + photoUrl;
+            return apiBaseUrl + photoUrl;
         }
         
         // 다른 형태의 경로인 경우 기본 도메인 추가
-        return baseUrl + "/uploads/" + photoUrl;
+        return apiBaseUrl + "/uploads/" + photoUrl;
     }
 
     /**
@@ -408,13 +411,13 @@ public class PostService {
         // 현재 사용자 권한 확인
         String currentUserRole = jwtTokenProvider.getRole(currentUserToken);
         if (!"ROLE_ADMIN".equals(currentUserRole)) {
-            throw new RuntimeException("관리자 권한이 필요합니다.");
+            throw new RuntimeException(ErrorMessages.ADMIN_PERMISSION_REQUIRED);
         }
         
         // 게시글 존재 여부 확인
         PostEntity existingPost = postRepository.findById(postId);
         if (existingPost == null) {
-            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+            throw new PostNotFoundException(ErrorMessages.POST_NOT_FOUND);
         }
         
         // 현재 사용자 ID 가져오기

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.github.constants.ErrorMessages;
 
 @Slf4j
 @Service
@@ -24,7 +25,7 @@ public class UserService {
         
         UserEntity user = userRepository.findByIdWithDepartmentAndPosition(userId);
         if (user == null) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다: " + userId);
+            throw new RuntimeException(ErrorMessages.USER_NOT_FOUND + ": " + userId);
         }
         
         UserInfoResponse response = UserInfoResponse.builder()

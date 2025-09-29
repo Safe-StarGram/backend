@@ -48,7 +48,7 @@ public class BackofficeController {
             log.info("현재 사용자 ID: {}, 역할: {}", currentUserId, currentUserRole);
             
             // 사용자 목록 조회
-            List<AdminUserResponse> users = adminService.getAllUsers(department);
+            List<AdminUserResponse> users = adminService.findAllUsers(department);
             
             log.info("조회된 사용자 수: {}", users.size());
             log.info("=== 관리자 일람 API 완료 ===");
@@ -91,7 +91,7 @@ public class BackofficeController {
             }
             
             // 권한 변경 실행
-            AdminUserResponse updatedUser = adminService.updateUserPermission(request.getUserId(), request.isGrantPermission());
+            AdminUserResponse updatedUser = adminService.changeUserRole(request.getUserId(), request.isGrantPermission());
             
             // 응답 데이터 구성
             Map<String, Object> response = new HashMap<>();
@@ -131,7 +131,7 @@ public class BackofficeController {
             log.info("현재 사용자 ID: {}", currentUserId);
             
             // 사용자 목록에서 해당 사용자 찾기 (간단한 구현)
-            List<AdminUserResponse> users = adminService.getAllUsers(null);
+            List<AdminUserResponse> users = adminService.findAllUsers(null);
             AdminUserResponse targetUser = users.stream()
                     .filter(user -> user.getUserId().equals(userId))
                     .findFirst()

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.github.constants.ErrorMessages;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,7 +25,7 @@ public class AdminService {
      * @return 사용자 목록
      */
     @Transactional(readOnly = true)
-    public List<AdminUserResponse> getAllUsers(String department) {
+    public List<AdminUserResponse> findAllUsers(String department) {
         log.info("=== 관리자 일람 조회 시작 ===");
         log.info("Department: {}", department);
         
@@ -51,7 +52,7 @@ public class AdminService {
      * @return 변경된 사용자 정보
      */
     @Transactional
-    public AdminUserResponse updateUserPermission(int userId, boolean grantPermission) {
+    public AdminUserResponse changeUserRole(int userId, boolean grantPermission) {
         log.info("=== 사용자 권한 변경 시작 ===");
         log.info("UserId: {}, GrantPermission: {}", userId, grantPermission);
         
@@ -61,7 +62,7 @@ public class AdminService {
         // 권한 업데이트
         int updatedRows = userRepository.updateUserRole(userId, newRole);
         if (updatedRows == 0) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다: " + userId);
+            throw new RuntimeException(ErrorMessages.USER_NOT_FOUND + ": " + userId);
         }
         
         // 업데이트된 사용자 정보 조회
@@ -108,7 +109,7 @@ public class AdminService {
         // 사용자 존재 여부 확인
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
-            throw new RuntimeException("사용자를 찾을 수 없습니다: " + userId);
+            throw new RuntimeException(ErrorMessages.USER_NOT_FOUND + ": " + userId);
         }
 
         // 참조 데이터 확인
