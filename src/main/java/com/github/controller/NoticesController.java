@@ -2,6 +2,7 @@ package com.github.controller;
 
 import com.github.dto.PostCreateRequest;
 import com.github.dto.ManagerRiskAssessmentRequest;
+import com.github.dto.PostResponse;
 import com.github.entity.PostEntity;
 import com.github.jwt.JwtTokenProvider;
 import com.github.service.PostService;
@@ -87,15 +88,16 @@ public class NoticesController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<PostEntity> getPostById(@PathVariable Long postId) {
+    public ResponseEntity<PostResponse> getPostById(@PathVariable Long postId) {
         System.out.println("=== 게시글 상세 조회 진행 ===");
         System.out.println("PostId: " + postId);
         
         PostEntity post = postService.getPostById(postId);
+        PostResponse response = postService.convertToPostResponse(post);
         
         System.out.println("Post found: " + post.getTitle());
         System.out.println("=== 게시글 상세 조회 완료 ===");
-        return ResponseEntity.ok(post);
+        return ResponseEntity.ok(response);
     }
 
     

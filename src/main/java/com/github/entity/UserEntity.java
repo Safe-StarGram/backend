@@ -24,6 +24,8 @@ public class UserEntity {
     private String department;
     private String position;
     private Integer role;
+    private String departmentName;  // 부서명
+    private String positionName;    // 직책명
     @JsonFormat(pattern = "yyyy-MM-dd/HH:mm:ss")
     private LocalDateTime createdAt;
     

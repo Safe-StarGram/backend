@@ -1,10 +1,14 @@
 package com.github.service;
 
 import com.github.dto.PostCreateRequest;
+import com.github.dto.AdminPostUpdateRequest;
+import com.github.dto.PostResponse;
 import com.github.entity.PostEntity;
 import com.github.exception.PostNotFoundException;
+import com.github.jwt.JwtTokenProvider;
 import com.github.repository.PostJdbcRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +24,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.sql.Timestamp;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PostService {
 
     private final PostJdbcRepository postRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Value("${file.upload-dir:./uploads}")
     private String uploadDir;
@@ -52,10 +59,10 @@ public class PostService {
                         .content(req.getContent())
                         .reporterRisk(req.getReporterRisk())
                         .isChecked(0)      // 0: 미확인 (초기값)
-                        .isActionTaken(0)  // 0: 미조치 (초기값)
+                        .isActionTaked(0)  // 0: 미조치 (초기값)
                         .createdAt(now)   // 생성 시 현재 시간 설정
                         .updatedAt(null)  // 생성 시 null로 설정
-                        .isCheckedAt(now)  // is_checked_at 필드 설정
+                        .checkedAt(now)   // checked_at 필드 설정
                         .build();
 
                 System.out.println("PostEntity built: " + e);
@@ -154,6 +161,9 @@ public class PostService {
 
     @Transactional
     public PostEntity updatePost(Long postId, Map<String, Object> updates, Long userId) {
+        log.info("=== updatePost 시작 ===");
+        log.info("postId: {}, userId: {}, updates: {}", postId, userId, updates);
+        
         PostEntity existingPost = postRepository.findById(postId);
         if (existingPost == null) {
             throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
@@ -178,7 +188,7 @@ public class PostService {
             }
         }
         
-        // camelCase를 snake_case로 변환하고 0/1 값을 Y/N으로 변환
+        // camelCase를 snake_case로 변환하고 0/1 값을 1/0 문자열로 변환
         Map<String, Object> convertedUpdates = new HashMap<>();
         for (Map.Entry<String, Object> entry : updates.entrySet()) {
             String key = entry.getKey();
@@ -188,11 +198,11 @@ public class PostService {
             String dbKey = convertCamelToSnakeCase(key);
             
             if ("is_checked".equals(dbKey) || "is_action_taken".equals(dbKey)) {
-                // 0/1 값을 Y/N으로 변환
+                // 0/1 값을 1/0 문자열로 변환 (데이터베이스 스키마에 맞춤)
                 if (value instanceof Integer) {
-                    convertedUpdates.put(dbKey, ((Integer) value) == 1 ? "Y" : "N");
+                    convertedUpdates.put(dbKey, ((Integer) value) == 1 ? "1" : "0");
                 } else if (value instanceof String) {
-                    convertedUpdates.put(dbKey, "1".equals(value) ? "Y" : "N");
+                    convertedUpdates.put(dbKey, "1".equals(value) ? "1" : "0");
                 } else {
                     convertedUpdates.put(dbKey, value);
                 }
@@ -206,24 +216,31 @@ public class PostService {
             Object checkedValue = updates.get("is_checked");
             boolean isChecked = false;
             
+            log.info("=== is_checked 처리 시작 ===");
+            log.info("checkedValue: {}, type: {}", checkedValue, checkedValue != null ? checkedValue.getClass().getSimpleName() : "null");
+            
             if (checkedValue instanceof Integer) {
                 isChecked = ((Integer) checkedValue) == 1;
             } else if (checkedValue instanceof String) {
                 isChecked = "1".equals(checkedValue);
             }
             
+            log.info("isChecked: {}", isChecked);
+            
             if (isChecked) {
                 // 1일 때는 확인한 사람 ID 설정
-                convertedUpdates.put("is_checked_id", userId);
-                // 이미 시간이 설정되어 있으면 시간 업데이트 안함
-                if (existingPost.getIsCheckedAt() == null) {
-                    convertedUpdates.put("is_checked_at", LocalDateTime.now());
-                }
+                convertedUpdates.put("checker_id", userId);
+                // 확인할 때마다 최신 시간으로 업데이트
+                Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+                convertedUpdates.put("checked_at", now);
+                log.info("checked_at 설정: {}", now);
             } else {
                 // 0일 때는 null로 설정
-                convertedUpdates.put("is_checked_id", null);
-                convertedUpdates.put("is_checked_at", null);
+                convertedUpdates.put("checker_id", null);
+                convertedUpdates.put("checked_at", null);
+                log.info("checked_at null로 설정");
             }
+            log.info("=== is_checked 처리 완료 ===");
         }
         
         // is_action_taken 처리 (0일 때는 null, 1일 때는 한 번만 시간 설정)
@@ -240,20 +257,23 @@ public class PostService {
             if (isActionTaken) {
                 // 1일 때는 조치한 사람 ID 설정
                 convertedUpdates.put("action_taker_id", userId);
-                // 이미 시간이 설정되어 있으면 시간 업데이트 안함
-                if (existingPost.getIsActionTakenAt() == null) {
-                    convertedUpdates.put("is_action_taken_at", LocalDateTime.now());
-                }
+                // 조치할 때마다 최신 시간으로 업데이트
+                convertedUpdates.put("action_taken_at", Timestamp.valueOf(LocalDateTime.now()));
             } else {
                 // 0일 때는 null로 설정
                 convertedUpdates.put("action_taker_id", null);
-                convertedUpdates.put("is_action_taken_at", null);
+                convertedUpdates.put("action_taken_at", null);
             }
         }
         
         // updated_at은 데이터베이스의 ON UPDATE CURRENT_TIMESTAMP가 자동으로 처리
         
-        return postRepository.update(postId, convertedUpdates);
+        log.info("=== 최종 convertedUpdates ===");
+        log.info("convertedUpdates: {}", convertedUpdates);
+        
+        PostEntity result = postRepository.update(postId, convertedUpdates);
+        log.info("=== updatePost 완료 ===");
+        return result;
     }
 
  
@@ -378,6 +398,100 @@ public class PostService {
                 // 이미 snake_case이거나 다른 형태면 그대로 반환
                 return camelCase;
         }
+    }
+
+    /**
+     * 관리자용 게시글 수정 (관리자 권한 필요)
+     */
+    @Transactional
+    public PostEntity updatePostByAdmin(Long postId, AdminPostUpdateRequest request, String currentUserToken) {
+        // 현재 사용자 권한 확인
+        String currentUserRole = jwtTokenProvider.getRole(currentUserToken);
+        if (!"ROLE_ADMIN".equals(currentUserRole)) {
+            throw new RuntimeException("관리자 권한이 필요합니다.");
+        }
+        
+        // 게시글 존재 여부 확인
+        PostEntity existingPost = postRepository.findById(postId);
+        if (existingPost == null) {
+            throw new PostNotFoundException("게시물을 찾을 수 없습니다.");
+        }
+        
+        // 현재 사용자 ID 가져오기
+        Long currentUserId = jwtTokenProvider.getUserId(currentUserToken);
+        
+        // 업데이트할 데이터 구성
+        Map<String, Object> updates = new HashMap<>();
+        
+        // isChecked 처리
+        if (request.getIsChecked() != null) {
+            updates.put("is_checked", request.getIsChecked());
+            
+            if (request.getIsChecked() == 1) {
+                // 확인 완료 시 - 항상 현재 시간으로 업데이트
+                updates.put("checker_id", request.getCheckerId() != null ? request.getCheckerId() : currentUserId);
+                // 확인할 때마다 최신 시간으로 업데이트 (클라이언트에서 보낸 시간 무시)
+                updates.put("checked_at", Timestamp.valueOf(LocalDateTime.now()));
+            } else {
+                // 미확인 시
+                updates.put("checker_id", null);
+                updates.put("checked_at", null);
+            }
+        }
+        
+        // isActionTaked 처리
+        if (request.getIsActionTaked() != null) {
+            updates.put("is_action_taken", request.getIsActionTaked());
+            
+            if (request.getIsActionTaked() == 1) {
+                // 조치 완료 시 - 항상 현재 시간으로 업데이트
+                updates.put("action_taker_id", request.getActionTakerId() != null ? request.getActionTakerId() : currentUserId);
+                // 조치할 때마다 최신 시간으로 업데이트 (클라이언트에서 보낸 시간 무시)
+                updates.put("action_taken_at", Timestamp.valueOf(LocalDateTime.now()));
+            } else {
+                // 미조치 시
+                updates.put("action_taker_id", null);
+                updates.put("action_taken_at", null);
+            }
+        }
+        
+        // managerRisk 처리
+        if (request.getManagerRisk() != null) {
+            updates.put("manager_risk", request.getManagerRisk());
+        }
+        
+        // 게시글 업데이트
+        PostEntity updatedPost = postRepository.update(postId, updates);
+        
+        System.out.println("관리자용 게시글 수정 완료: postId=" + postId);
+        return updatedPost;
+    }
+
+    /**
+     * PostEntity를 PostResponse로 변환
+     */
+    public PostResponse convertToPostResponse(PostEntity post) {
+        return PostResponse.builder()
+                .postId(post.getPostId())
+                .title(post.getTitle())
+                .postPhotoUrl(post.getPostPhotoUrl())
+                .content(post.getContent())
+                .areaId(post.getAreaId())
+                .subAreaId(post.getSubAreaId())
+                .reporterId(post.getReporterId())
+                .isChecked(post.getIsChecked())
+                .checkerId(post.getCheckerId())
+                .checkedAt(post.getCheckedAt())
+                .isActionTaked(post.getIsActionTaked())
+                .actionTakerId(post.getActionTakerId())
+                .actionTakenAt(post.getActionTakenAt())
+                .reporterRiskScore(post.getReporterRiskScore())
+                .reporterRiskDescription(post.getReporterRiskDescription())
+                .reporterRisk(post.getReporterRisk())
+                .managerRisk(post.getManagerRisk())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .build();
     }
 
 

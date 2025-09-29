@@ -2,8 +2,11 @@ package com.github.controller;
 
 import com.github.dto.AdminPermissionRequest;
 import com.github.dto.AdminUserResponse;
+import com.github.dto.AdminPostUpdateRequest;
+import com.github.entity.PostEntity;
 import com.github.jwt.JwtTokenProvider;
 import com.github.service.AdminService;
+import com.github.service.PostService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ public class BackofficeController {
 
     private final AdminService adminService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final PostService postService;
 
     /**
      * 관리자 일람 - 모든 사용자 목록 조회
@@ -59,17 +63,16 @@ public class BackofficeController {
 
     /**
      * 사용자 권한 관리 - 권한 부여/제거
-     * PUT /api/admin/users/{userId}/permission
+     * PUT /api/admin/permission
      */
-    @PutMapping("/permission/{userId}")
+    @PutMapping("/permission")
     public ResponseEntity<Map<String, Object>> updateUserPermission(
-            @PathVariable int userId,
             @Valid @RequestBody AdminPermissionRequest request,
             HttpServletRequest httpRequest
     ) {
         try {
             log.info("=== 사용자 권한 변경 API 호출 ===");
-            log.info("Target UserId: {}, GrantPermission: {}", userId, request.isGrantPermission());
+            log.info("Target UserId: {}, GrantPermission: {}", request.getUserId(), request.isGrantPermission());
             
             // JWT 토큰에서 현재 사용자 정보 추출
             String token = extractTokenFromRequest(httpRequest);
@@ -81,14 +84,14 @@ public class BackofficeController {
             log.info("ROLE_ADMIN과 비교: {}", "ROLE_ADMIN".equals(currentUserRole));
             
             // 자신의 권한을 변경하려는 경우 방지
-            if (currentUserId.equals((long) userId)) {
+            if (currentUserId.equals(request.getUserId().longValue())) {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("error", "자신의 권한은 변경할 수 없습니다.");
                 return ResponseEntity.badRequest().body(errorResponse);
             }
             
             // 권한 변경 실행
-            AdminUserResponse updatedUser = adminService.updateUserPermission(userId, request.isGrantPermission());
+            AdminUserResponse updatedUser = adminService.updateUserPermission(request.getUserId(), request.isGrantPermission());
             
             // 응답 데이터 구성
             Map<String, Object> response = new HashMap<>();
@@ -142,6 +145,156 @@ public class BackofficeController {
         } catch (Exception e) {
             log.error("사용자 상세 조회 중 오류 발생: {}", e.getMessage(), e);
             throw e;
+        }
+    }
+
+    /**
+     * 사용자 삭제 (관리자 권한 필요)
+     * DELETE /api/admin/users/{userId}
+     */
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Map<String, Object>> deleteUser(
+            @PathVariable int userId,
+            HttpServletRequest request
+    ) {
+        try {
+            log.info("=== 사용자 삭제 API 호출 ===");
+            log.info("Target UserId: {}", userId);
+            
+            // JWT 토큰에서 현재 사용자 정보 추출
+            String token = extractTokenFromRequest(request);
+            Long currentUserId = jwtTokenProvider.getUserId(token);
+            String currentUserRole = jwtTokenProvider.getRole(token);
+            
+            log.info("현재 사용자 ID: {}, 역할: {}", currentUserId, currentUserRole);
+            
+            // 관리자 권한 확인
+            if (!"ROLE_ADMIN".equals(currentUserRole)) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "관리자 권한이 필요합니다.");
+                return ResponseEntity.status(403).body(errorResponse);
+            }
+            
+            // 자신을 삭제하려는 경우 방지
+            if (currentUserId.equals((long) userId)) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "자신의 계정은 삭제할 수 없습니다.");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // 삭제 전 참조 데이터 정보 조회
+            var refInfo = adminService.getUserReferenceInfo(userId);
+            
+            // 사용자 삭제 (참조 데이터도 함께 삭제)
+            adminService.deleteUser(userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "사용자가 삭제되었습니다.");
+            response.put("deletedData", Map.of(
+                "comments", refInfo.getCommentCount(),
+                "posts", refInfo.getPostCount(),
+                "checkedPosts", refInfo.getCheckedPostCount(),
+                "actionPosts", refInfo.getActionPostCount()
+            ));
+            
+            log.info("사용자 삭제 완료: userId={}", userId);
+            log.info("=== 사용자 삭제 API 완료 ===");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("사용자 삭제 중 오류 발생: {}", e.getMessage(), e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * 사용자 삭제 전 참조 데이터 확인
+     * GET /api/admin/users/{userId}/references
+     */
+    @GetMapping("/users/{userId}/references")
+    public ResponseEntity<Map<String, Object>> getUserReferences(
+            @PathVariable int userId,
+            HttpServletRequest request
+    ) {
+        try {
+            log.info("=== 사용자 참조 데이터 조회 API 호출 ===");
+            log.info("Target UserId: {}", userId);
+            
+            // JWT 토큰에서 현재 사용자 정보 추출
+            String token = extractTokenFromRequest(request);
+            String currentUserRole = jwtTokenProvider.getRole(token);
+            
+            // 관리자 권한 확인
+            if (!"ROLE_ADMIN".equals(currentUserRole)) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "관리자 권한이 필요합니다.");
+                return ResponseEntity.status(403).body(errorResponse);
+            }
+            
+            var refInfo = adminService.getUserReferenceInfo(userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("references", Map.of(
+                "comments", refInfo.getCommentCount(),
+                "posts", refInfo.getPostCount(),
+                "checkedPosts", refInfo.getCheckedPostCount(),
+                "actionPosts", refInfo.getActionPostCount(),
+                "hasReferences", refInfo.hasReferences()
+            ));
+            
+            log.info("사용자 참조 데이터 조회 완료: userId={}", userId);
+            log.info("=== 사용자 참조 데이터 조회 API 완료 ===");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("사용자 참조 데이터 조회 중 오류 발생: {}", e.getMessage(), e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * 관리자용 게시글 수정 (관리자 권한 필요)
+     * PATCH /api/admin/notices/{postId}
+     */
+    @PatchMapping("/notices/{postId}")
+    public ResponseEntity<PostEntity> updatePostByAdmin(
+            @PathVariable Long postId,
+            @Valid @RequestBody AdminPostUpdateRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        try {
+            log.info("=== 관리자용 게시글 수정 API 호출 ===");
+            log.info("PostId: {}, Request: {}", postId, request);
+            
+            // JWT 토큰에서 현재 사용자 정보 추출
+            String token = extractTokenFromRequest(httpRequest);
+            String currentUserRole = jwtTokenProvider.getRole(token);
+            
+            log.info("현재 사용자 역할: {}", currentUserRole);
+            
+            // 관리자 권한 확인
+            if (!"ROLE_ADMIN".equals(currentUserRole)) {
+                throw new RuntimeException("관리자 권한이 필요합니다.");
+            }
+            
+            // 관리자용 게시글 수정 실행
+            PostEntity updatedPost = postService.updatePostByAdmin(postId, request, token);
+            
+            log.info("게시글 수정 완료: postId={}", postId);
+            log.info("=== 관리자용 게시글 수정 API 완료 ===");
+            
+            return ResponseEntity.ok(updatedPost);
+            
+        } catch (Exception e) {
+            log.error("관리자용 게시글 수정 중 오류 발생: {}", e.getMessage(), e);
+            throw new RuntimeException("게시글 수정 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 

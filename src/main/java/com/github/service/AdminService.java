@@ -95,6 +95,42 @@ public class AdminService {
                 .position(user.getPosition())
                 .profilePhotoUrl(user.getProfilePhotoUrl())
                 .hasAdminPermission(hasAdminPermission)
+                .role(user.getRole()) // role 정보 추가
                 .build();
+    }
+
+    /**
+     * 사용자 삭제 (관리자 권한 필요)
+     * 참조 데이터도 함께 삭제됩니다.
+     */
+    @Transactional
+    public void deleteUser(int userId) {
+        // 사용자 존재 여부 확인
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다: " + userId);
+        }
+
+        // 참조 데이터 확인
+        UserJdbcRepository.UserReferenceInfo refInfo = userRepository.getUserReferenceInfo(userId);
+        if (refInfo.hasReferences()) {
+            System.out.println("User " + userId + " 삭제 시 함께 삭제될 데이터:");
+            System.out.println("- Comments: " + refInfo.getCommentCount() + "개");
+            System.out.println("- Posts: " + refInfo.getPostCount() + "개");
+            System.out.println("- Checked Posts: " + refInfo.getCheckedPostCount() + "개");
+            System.out.println("- Action Posts: " + refInfo.getActionPostCount() + "개");
+        }
+
+        // 계단식 삭제 실행
+        userRepository.deleteUser(userId);
+        
+        System.out.println("User " + userId + " 삭제 완료");
+    }
+
+    /**
+     * 사용자 삭제 전 참조 데이터 정보 조회
+     */
+    public UserJdbcRepository.UserReferenceInfo getUserReferenceInfo(int userId) {
+        return userRepository.getUserReferenceInfo(userId);
     }
 }

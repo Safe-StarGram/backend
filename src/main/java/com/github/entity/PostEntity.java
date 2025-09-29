@@ -23,12 +23,12 @@ public class PostEntity {
     private Integer reporterDepartment;   // 부서 ID (정수)
     
     // 확인자 정보
-    private Long isCheckedId;       // 확인한 사람 ID (is_checked_id)
-    private String checkerName;     // 확인한 사람 이름
+    private Long checkerId;        // 확인한 사람 ID
+    private String checkerName;    // 확인한 사람 이름
     private Integer checkerPosition;      // 확인한 사람 직책 ID (정수)
     private Integer checkerDepartment;    // 확인한 사람 부서 ID (정수)
     
-    // 조치자 정보 (현재 데이터베이스 스키마에 맞게)
+    // 조치자 정보
     private Long actionTakerId;    // 조치한 사람 ID
     private String actionTakerName; // 조치한 사람 이름
     private Integer actionTakerPosition;  // 조치한 사람 직책 ID (정수)
@@ -47,7 +47,8 @@ public class PostEntity {
     // 관리자 위험성 평가
     private String managerRisk;             // 1~5점 문자열로 저장
     private Integer isChecked;    // 0: 미확인, 1: 확인완료
-    private Integer isActionTaken; // 0: 미조치, 1: 조치완료
+    private Integer isActionTaked; // 0: 미조치, 1: 조치완료 (오타 유지)
+    
     @JsonFormat(pattern = "yyyy-MM-dd/HH:mm:ss")
     private LocalDateTime createdAt;
     
@@ -55,8 +56,8 @@ public class PostEntity {
     private LocalDateTime updatedAt;
     
     @JsonFormat(pattern = "yyyy-MM-dd/HH:mm:ss")
-    private LocalDateTime isCheckedAt;
+    private LocalDateTime checkedAt;
     
     @JsonFormat(pattern = "yyyy-MM-dd/HH:mm:ss")
-    private LocalDateTime isActionTakenAt;
+    private LocalDateTime actionTakenAt;
 }

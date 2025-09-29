@@ -55,7 +55,7 @@ public class DebugController {
                 .reporterRisk("1")
                 .postPhotoUrl(null)
                 .isChecked(0)
-                .isActionTaken(0)
+                .isActionTaked(0)
                 .build());
             
             return Map.of("status", "success", "message", "테이블이 생성되었습니다");

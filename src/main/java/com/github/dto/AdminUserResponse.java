@@ -18,4 +18,5 @@ public class AdminUserResponse {
     private String position;
     private String profilePhotoUrl;
     private boolean hasAdminPermission; // 관리자 권한 여부
+    private Integer role; // 사용자 역할 (1: 관리자, 0: 일반 사용자)
 }

@@ -23,12 +23,16 @@ public class PostJdbcRepository {
 
     private final JdbcTemplate jdbc;
 
-    // Y/N 문자열을 Integer로 변환하는 헬퍼 메서드
-    private Integer convertYNToInt(String value) {
+    // 문자열을 Integer로 변환하는 헬퍼 메서드 (1 또는 0)
+    private Integer convertStringToInt(String value) {
         if (value == null || value.trim().isEmpty()) {
             return 0;
         }
-        return "Y".equalsIgnoreCase(value.trim()) ? 1 : 0;
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     // 공통 RowMapper
@@ -37,7 +41,7 @@ public class PostJdbcRepository {
             .subAreaId(rs.getLong("sub_area_id"))
             .areaId(rs.getObject("area_id", Long.class))
             .reporterId(rs.getLong("reporter_id"))
-            .isCheckedId(rs.getObject("is_checked_id", Long.class))
+            .checkerId(rs.getObject("checker_id", Long.class))
             .actionTakerId(rs.getObject("action_taker_id", Long.class))
             .title(rs.getString("title"))
             .content(rs.getString("content"))
@@ -55,13 +59,13 @@ public class PostJdbcRepository {
             .actionTakerName(rs.getString("action_taker_name"))
             .actionTakerPosition(rs.getObject("action_taker_position", Integer.class))
             .actionTakerDepartment(rs.getObject("action_taker_department", Integer.class))
-            .isChecked(convertYNToInt(rs.getString("is_checked")))
-            .isActionTaken(convertYNToInt(rs.getString("is_action_taken")))
+            .isChecked(convertStringToInt(rs.getString("is_checked")))
+            .isActionTaked(convertStringToInt(rs.getString("is_action_taken")))
             .postPhotoUrl(rs.getString("post_photo_url"))
             .createdAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null)
             .updatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null)
-            .isCheckedAt(rs.getTimestamp("is_checked_at") != null ? rs.getTimestamp("is_checked_at").toLocalDateTime() : null)
-            .isActionTakenAt(rs.getTimestamp("is_action_taken_at") != null ? rs.getTimestamp("is_action_taken_at").toLocalDateTime() : null)
+            .checkedAt(rs.getTimestamp("checked_at") != null ? rs.getTimestamp("checked_at").toLocalDateTime() : null)
+            .actionTakenAt(rs.getTimestamp("action_taken_at") != null ? rs.getTimestamp("action_taken_at").toLocalDateTime() : null)
             .build();
 
     // 간단한 RowMapper (필수 필드만)
@@ -104,8 +108,8 @@ public class PostJdbcRepository {
                 ps.setString(5, post.getContent());
                 ps.setString(6, post.getReporterRisk());
                 ps.setString(7, ""); // post_photo_url은 빈 문자열로 초기화
-                ps.setString(8, post.getIsChecked() != null && post.getIsChecked() == 1 ? "Y" : "N"); // 0->N, 1->Y
-                ps.setString(9, post.getIsActionTaken() != null && post.getIsActionTaken() == 1 ? "Y" : "N"); // 0->N, 1->Y
+                ps.setString(8, post.getIsChecked() != null && post.getIsChecked() == 1 ? "1" : "0"); // 0 또는 1
+                ps.setString(9, post.getIsActionTaked() != null && post.getIsActionTaked() == 1 ? "1" : "0"); // 0 또는 1
                 ps.setTimestamp(10, new Timestamp(System.currentTimeMillis())); // 현재 시간 설정
                 return ps;
             }, keyHolder);
@@ -152,6 +156,7 @@ public class PostJdbcRepository {
                 sub_area_id        INT NOT NULL,
                 area_id            INT,
                 reporter_id        INT NOT NULL,  
+                checker_id         INT,           
                 action_taker_id    INT,           
                 title              VARCHAR(200) NOT NULL,
                 content            TEXT NOT NULL,
@@ -162,8 +167,8 @@ public class PostJdbcRepository {
                 post_photo_url     VARCHAR(255) NOT NULL,
                 created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                is_checked_at      DATETIME NULL,
-                is_action_taken_at DATETIME NULL 
+                checked_at         DATETIME NULL,
+                action_taken_at    DATETIME NULL 
             )
             """;
             
@@ -181,9 +186,35 @@ public class PostJdbcRepository {
             jdbc.execute(createSubAreaTableSql);
             jdbc.execute(createPostTableSql);
             jdbc.execute(createPostPhotosTableSql);
-            log.info("Tables created successfully");
+            
+            // 기존 테이블의 컬럼명 변경 (기존 데이터가 있는 경우)
+            try {
+                // is_checked_id를 checker_id로 변경
+                jdbc.execute("ALTER TABLE post CHANGE COLUMN is_checked_id checker_id INT");
+                log.info("Column is_checked_id renamed to checker_id");
+            } catch (Exception e) {
+                log.debug("Column is_checked_id does not exist or already renamed: {}", e.getMessage());
+            }
+            
+            try {
+                // is_checked_at을 checked_at으로 변경
+                jdbc.execute("ALTER TABLE post CHANGE COLUMN is_checked_at checked_at DATETIME NULL");
+                log.info("Column is_checked_at renamed to checked_at");
+            } catch (Exception e) {
+                log.debug("Column is_checked_at does not exist or already renamed: {}", e.getMessage());
+            }
+            
+            try {
+                // is_action_taken_at을 action_taken_at으로 변경
+                jdbc.execute("ALTER TABLE post CHANGE COLUMN is_action_taken_at action_taken_at DATETIME NULL");
+                log.info("Column is_action_taken_at renamed to action_taken_at");
+            } catch (Exception e) {
+                log.debug("Column is_action_taken_at does not exist or already renamed: {}", e.getMessage());
+            }
+            
+            log.info("Tables created and columns renamed successfully");
         } catch (Exception e) {
-            log.error("Failed to create tables: {}", e.getMessage());
+            log.error("Failed to create tables or rename columns: {}", e.getMessage());
         }
     }
 
@@ -197,15 +228,15 @@ public class PostJdbcRepository {
     public PostEntity findById(Long postId) {
         // 사용자 정보와 JOIN하여 부서/직책 ID 가져오기
         final String sql = """
-                SELECT p.post_id, p.sub_area_id, p.area_id, p.reporter_id, p.is_checked_id, p.action_taker_id, 
+                SELECT p.post_id, p.sub_area_id, p.area_id, p.reporter_id, p.checker_id, p.action_taker_id, 
                        p.title, p.content, p.reporter_risk, p.manager_risk,
-                       p.is_checked, p.is_action_taken, p.post_photo_url, p.created_at, p.updated_at, p.is_checked_at, p.is_action_taken_at,
+                       p.is_checked, p.is_action_taken, p.post_photo_url, p.created_at, p.updated_at, p.checked_at, p.action_taken_at,
                        ru.name as reporter_name, ru.department_id as reporter_department, ru.position_id as reporter_position,
                        cu.name as checker_name, cu.department_id as checker_department, cu.position_id as checker_position,
                        au.name as action_taker_name, au.department_id as action_taker_department, au.position_id as action_taker_position
                 FROM post p
                 LEFT JOIN users ru ON p.reporter_id = ru.users_id
-                LEFT JOIN users cu ON p.is_checked_id = cu.users_id
+                LEFT JOIN users cu ON p.checker_id = cu.users_id
                 LEFT JOIN users au ON p.action_taker_id = au.users_id
                 WHERE p.post_id = ?
                 """;
@@ -234,15 +265,15 @@ public class PostJdbcRepository {
         }
 
         final String sql = """
-            SELECT p.post_id, p.sub_area_id, p.area_id, p.reporter_id, p.is_checked_id, p.action_taker_id, 
+            SELECT p.post_id, p.sub_area_id, p.area_id, p.reporter_id, p.checker_id, p.action_taker_id, 
                    p.title, p.content, p.reporter_risk, p.manager_risk,
-                   p.is_checked, p.is_action_taken, p.post_photo_url, p.created_at, p.updated_at, p.is_checked_at, p.is_action_taken_at,
+                   p.is_checked, p.is_action_taken, p.post_photo_url, p.created_at, p.updated_at, p.checked_at, p.action_taken_at,
                    ru.name as reporter_name, ru.department_id as reporter_department, ru.position_id as reporter_position,
                    cu.name as checker_name, cu.department_id as checker_department, cu.position_id as checker_position,
                    au.name as action_taker_name, au.department_id as action_taker_department, au.position_id as action_taker_position
             FROM post p
             LEFT JOIN users ru ON p.reporter_id = ru.users_id
-            LEFT JOIN users cu ON p.is_checked_id = cu.users_id
+            LEFT JOIN users cu ON p.checker_id = cu.users_id
             LEFT JOIN users au ON p.action_taker_id = au.users_id
             ORDER BY p.created_at DESC LIMIT ? OFFSET ?
             """;
@@ -317,10 +348,18 @@ public class PostJdbcRepository {
             Object[] params = new Object[updates.size() + 1];
             int index = 0;
             for (Object value : updates.values()) {
-                params[index++] = value;
+                // LocalDateTime을 Timestamp로 변환
+                if (value instanceof java.time.LocalDateTime) {
+                    params[index++] = Timestamp.valueOf((java.time.LocalDateTime) value);
+                } else {
+                    params[index++] = value;
+                }
             }
             params[index] = postId;
 
+            log.info("Update SQL: {}", sql.toString());
+            log.info("Update params: {}", java.util.Arrays.toString(params));
+            
             jdbc.update(sql.toString(), params);
             return findById(postId);
         } catch (Exception e) {
