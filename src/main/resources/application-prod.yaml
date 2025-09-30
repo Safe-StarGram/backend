@@ -3,6 +3,8 @@ file:
 
 server:
   port: 8080
+  forward-headers-strategy: framework  # 프록시 헤더 처리 활성화
+  use-forward-headers: true
 
 spring:
   datasource:
