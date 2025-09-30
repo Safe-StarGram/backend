@@ -100,7 +100,7 @@ public class AreaService {
         return AreaResponse.builder()
                 .id(area.getAreaId())
                 .areaName(area.getName())
-                .imageUrl(area.getImageUrl())
+                .imageUrl(convertToFullUrl(area.getImageUrl()))
                 .subAreas(subDtos)
                 .build();
     }
