@@ -101,6 +101,7 @@ public class SecurityConfig {
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "https://safe-stargram.vercel.app",
+            "https://safestargram2.vercel.app",
             "https://chan23.duckdns.org",
             "https://www.chan23.duckdns.org"
         ));
