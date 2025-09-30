@@ -101,6 +101,7 @@ public class SecurityConfig {
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "https://safe-stargram.vercel.app",
+            "https://safestargram2.vercel.app",
             "https://chan23.duckdns.org",
             "https://www.chan23.duckdns.org"
         ));
@@ -110,6 +111,9 @@ public class SecurityConfig {
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Set-Cookie"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
+        
+        // Preflight 요청에 대한 추가 설정
+        configuration.setAllowPrivateNetwork(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
