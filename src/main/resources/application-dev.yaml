@@ -20,8 +20,8 @@ spring:
     password: safetyworld
   servlet: #사진폴더 -> 파일이 어디/얼마까지 저장될지 서버가 알아야 함.
     multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 
 #spring:

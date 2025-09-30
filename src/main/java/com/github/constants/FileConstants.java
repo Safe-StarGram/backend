@@ -9,8 +9,8 @@ public class FileConstants {
     public static final String UPLOAD_DIR = "./uploads";
     
     // 파일 크기 제한
-    public static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    public static final long MAX_REQUEST_SIZE = 5 * 1024 * 1024; // 5MB
+    public static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    public static final long MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
     
     // 허용되는 이미지 타입
     public static final String[] ALLOWED_IMAGE_TYPES = {"jpg", "jpeg", "png", "gif"};

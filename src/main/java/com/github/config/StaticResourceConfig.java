@@ -2,11 +2,13 @@ package com.github.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 
 @Configuration
 public class StaticResourceConfig implements WebMvcConfigurer {
@@ -20,7 +22,8 @@ public class StaticResourceConfig implements WebMvcConfigurer {
         String location = uploadPath.toUri().toString(); // 예: file:/Users/you/project/uploads/
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(location)
-                .setCachePeriod(3600); // 선택: 1시간 캐시
+                .setCachePeriod(86400) // 24시간 캐시 (이미지는 자주 변경되지 않음)
+                .setCacheControl(CacheControl.maxAge(Duration.ofDays(1))); // HTTP Cache-Control 헤더 설정
     }
 
 }

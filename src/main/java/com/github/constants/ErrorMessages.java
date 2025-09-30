@@ -33,7 +33,7 @@ public class ErrorMessages {
     
     // 파일 관련
     public static final String FILE_UPLOAD_FAILED = "파일 업로드에 실패했습니다";
-    public static final String FILE_SIZE_EXCEEDED = "파일 크기가 너무 큽니다";
+    public static final String FILE_SIZE_EXCEEDED = "파일 크기가 너무 큽니다 (최대 10MB)";
     public static final String INVALID_FILE_TYPE = "지원하지 않는 파일 형식입니다";
     
     // 데이터베이스 관련
